@@ -1,8 +1,9 @@
 {
+  "name": "iknowaspot", 
+  "displayName": "I Know A Spot",
   "expo": {
-    "name": "iknowaspot",
+    "name": "iknowaspot", 
     "slug": "iknowaspot",
-    "displayName": "iKnowASpot",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
