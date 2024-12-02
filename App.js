@@ -1,43 +1,32 @@
-import React from 'react'; 
-import { NavigationContainer } from '@react-navigation/native'; 
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import MapScreen from './MapScreen'; 
-import { View, Text } from 'react-native';
+import LoginScreen from './screens/LoginScreen';
+import SignUpScreen from './screens/SignUpScreen';
+import MapScreen from './screens/MapScreen';
 
-const Stack = createNativeStackNavigator(); 
+const Stack = createNativeStackNavigator();
 
-class ErrorBoundary extends React.Component {
-  state = { hasError: false };
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.log('Error:', error);
-    console.log('Error Info:', errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>Something went wrong!</Text>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-export default function App() { 
-    return (
-        <ErrorBoundary>
-            <NavigationContainer> 
-                <Stack.Navigator initialRouteName="Map">
-                    <Stack.Screen name="Map" component={MapScreen} /> 
-                </Stack.Navigator> 
-            </NavigationContainer> 
-        </ErrorBoundary>
-    );
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login">
+        <Stack.Screen 
+          name="Login" 
+          component={LoginScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="SignUp" 
+          component={SignUpScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Map" 
+          component={MapScreen} 
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }

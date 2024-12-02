@@ -3,8 +3,9 @@ import { StyleSheet, View, Image, Alert, TouchableOpacity, Text, Linking, Platfo
 import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { GOOGLE_PLACES_API_KEY } from '@env';
+import { auth, db } from '../firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
 
-// Add this helper function before your MapScreen component
 const getPriceSymbols = (level) => {
   switch(level) {
     case 0: return 'Free';
@@ -16,7 +17,6 @@ const getPriceSymbols = (level) => {
   }
 };
 
-// Add this helper function to handle map opening
 const openInMaps = (place) => {
   const { latitude, longitude } = place.coordinate;
   const label = encodeURIComponent(place.name);
@@ -40,18 +40,16 @@ const MapScreen = () => {
   const [scenicSpots, setScenicSpots] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [favorites, setFavorites] = useState({});
+  const [userProfile, setUserProfile] = useState(null);
 
-  // Get user's location
   const getUserLocation = async () => {
     try {
-      // Request permission to access location
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission denied', 'Allow location access to find nearby restaurants');
         return;
       }
 
-      // Get current position
       const location = await Location.getCurrentPositionAsync({});
       const userCoords = {
         latitude: location.coords.latitude,
@@ -60,7 +58,6 @@ const MapScreen = () => {
       
       setUserLocation(userCoords);
       
-      // Fetch restaurants near user location
       fetchNearbyPlaces(userCoords.latitude, userCoords.longitude);
     } catch (error) {
       console.error('Error getting location:', error);
@@ -68,16 +65,24 @@ const MapScreen = () => {
     }
   };
 
-  // Fetch nearby places using Google Places API
+  const getUserProfile = async () => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      if (userDoc.exists()) {
+        setUserProfile(userDoc.data());
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
   const fetchNearbyPlaces = async (latitude, longitude) => {
     try {
-      // Fetch restaurants
       const restaurantResponse = await fetch(
         `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=5000&type=restaurant&key=${GOOGLE_PLACES_API_KEY}`
       );
       const restaurantData = await restaurantResponse.json();
       
-      // Fetch scenic spots
       const scenicResponse = await fetch(
         `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=5000&type=tourist_attraction|park|natural_feature&key=${GOOGLE_PLACES_API_KEY}`
       );
@@ -121,10 +126,9 @@ const MapScreen = () => {
     }
   };
 
-  // Get location when component mounts
   useEffect(() => {
     getUserLocation();
-  
+    getUserProfile();
   }, []);
 
   const handleFavoritePress = (place) => {
@@ -146,13 +150,23 @@ const MapScreen = () => {
           longitudeDelta: 0.0421,
         } : null}
       >
-        {/* User Location */}
+        {/* User Location with Profile Picture */}
         {userLocation && (
           <Marker
             coordinate={userLocation}
             title="You are here"
-            pinColor="blue"
-          />
+          >
+            <View style={styles.userMarkerContainer}>
+              <Image
+                source={
+                  userProfile?.profileImage 
+                    ? { uri: userProfile.profileImage }
+                    : require('../assets/icon.png')
+                }
+                style={styles.userMarkerImage}
+              />
+            </View>
+          </Marker>
         )}
         
         {/* Restaurant Markers */}
@@ -163,7 +177,7 @@ const MapScreen = () => {
           >
             <View style={styles.markerContainer}>
               <Image
-                source={require('./assets/hot-pot.png')}
+                source={require('../assets/hot-pot.png')}
                 style={styles.markerImage}
               />
             </View>
@@ -236,7 +250,7 @@ const MapScreen = () => {
           >
             <View style={styles.markerContainer}>
               <Image
-                source={require('./assets/sunset.png')}
+                source={require('../assets/sunset.png')}
                 style={styles.markerImage}
               />
             </View>
@@ -345,6 +359,30 @@ const styles = StyleSheet.create({
     width: 15,
     height: 15,
     resizeMode: 'contain',
+  },
+  userMarkerContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#006400',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  userMarkerImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
 });
 
