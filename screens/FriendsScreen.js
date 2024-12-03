@@ -25,6 +25,7 @@ import {
   arrayRemove 
 } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
+import { themeColors, shadowStyle } from '../shared/styles';
 
 const FriendsScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -333,7 +334,7 @@ const FriendsScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFACD',
+    backgroundColor: themeColors.background,
   },
   container: {
     flex: 1,
@@ -342,55 +343,59 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#006400',
-    marginBottom: 20,
+    color: themeColors.primary,
+    marginBottom: 25,
     textAlign: 'center',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 100, 0, 0.15)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 10,
     marginBottom: 20,
-    gap: 10,
+    ...shadowStyle,
+    borderWidth: 1,
+    borderColor: themeColors.primary,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#006400',
+    marginLeft: 10,
+    color: themeColors.primary,
+    fontSize: 16,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 25,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#006400',
-    marginBottom: 10,
+    color: themeColors.primary,
+    marginBottom: 15,
+    paddingLeft: 5,
   },
   userItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: themeColors.cardBackground,
+    borderRadius: 15,
+    marginBottom: 12,
+    ...shadowStyle,
+    borderLeftWidth: 4,
+    borderLeftColor: themeColors.primary,
   },
   username: {
     fontSize: 16,
-    color: '#006400',
+    color: themeColors.primary,
+    fontWeight: '500',
   },
   addButton: {
     backgroundColor: '#006400',
@@ -438,33 +443,29 @@ const styles = StyleSheet.create({
   actionButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 10,
+    padding: 15,
     position: 'absolute',
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255, 250, 205, 0.9)',
+    borderRadius: 20,
+    ...shadowStyle,
   },
   actionButton: {
-    backgroundColor: '#006400',
-    padding: 10,
-    borderRadius: 10,
+    backgroundColor: themeColors.primary,
+    padding: 12,
+    borderRadius: 12,
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 5,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...shadowStyle,
   },
   actionButtonText: {
     color: 'white',
     fontSize: 12,
     marginTop: 5,
+    fontWeight: '500',
   },
   modalView: {
     flex: 1,
@@ -473,10 +474,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   qrContainer: {
-    backgroundColor: 'white',
-    padding: 20,
+    backgroundColor: themeColors.cardBackground,
+    padding: 25,
     borderRadius: 20,
     alignItems: 'center',
+    ...shadowStyle,
   },
   scannerContainer: {
     width: '80%',
@@ -488,20 +490,21 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#006400',
+    color: themeColors.primary,
     marginBottom: 20,
   },
   closeButton: {
     marginTop: 20,
-    backgroundColor: '#006400',
-    padding: 10,
-    borderRadius: 10,
-    width: 100,
+    backgroundColor: themeColors.primary,
+    padding: 12,
+    borderRadius: 12,
+    width: 120,
     alignItems: 'center',
   },
   closeButtonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '500',
   },
 });
 
