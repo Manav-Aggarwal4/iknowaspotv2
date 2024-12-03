@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,6 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../firebase/config';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { connectFirestoreEmulator, enableNetwork, disableNetwork } from "firebase/firestore";
-import { enableIndexedDbPersistence } from "firebase/firestore";
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
-import { getApp } from 'firebase/app';
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -74,16 +67,6 @@ const SignUpScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled in one tab at a time
-      console.log('Persistence failed');
-    } else if (err.code == 'unimplemented') {
-      // The current browser doesn't support persistence
-      console.log('Persistence not supported');
-    }
-  });
 
   const executeWithRetry = async (operation, maxAttempts = 3) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
