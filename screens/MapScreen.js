@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, Image, Alert, TouchableOpacity, Text, Linking, Platform } from 'react-native';
+import { StyleSheet, View, Image, Alert, TouchableOpacity, Text, Linking, Platform, Modal, TextInput } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { GOOGLE_PLACES_API_KEY } from '@env';
@@ -42,6 +42,8 @@ const MapScreen = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [showFavoriteModal, setShowFavoriteModal] = useState(false);
 
   const isFavorite = (placeId) => {
     return favorites.some(fav => fav.id === placeId);
@@ -140,7 +142,6 @@ const MapScreen = () => {
   const handleFavoritePress = useCallback(async (place) => {
     try {
       const userId = auth.currentUser.uid;
-      
       const isScenic = scenicSpots.some(spot => spot.id === place.id);
       
       const favoriteItem = {
@@ -151,22 +152,93 @@ const MapScreen = () => {
         coordinate: {
           latitude: place.geometry?.location?.lat || place.coordinate?.latitude,
           longitude: place.geometry?.location?.lng || place.coordinate?.longitude
-        }
+        },
+        bestTimeToGo: null,
+        favoriteDish: null,
+        personalNotes: '',
+        lastUpdated: new Date().toISOString()
       };
       
-      console.log('Saving favorite:', favoriteItem);
-      
-      const newIsFavorite = await toggleFavorite(userId, favoriteItem);
-      if (newIsFavorite) {
-        setFavorites(prev => [...prev, favoriteItem]);
-      } else {
-        setFavorites(prev => prev.filter(item => item.id !== favoriteItem.id));
-      }
+      setSelectedPlace(favoriteItem);
+      setShowFavoriteModal(true);
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite');
     }
   }, [scenicSpots]);
+
+  const FavoriteDetailsModal = ({ visible, place, onClose, onSave }) => {
+    const [bestTime, setBestTime] = useState('');
+    const [favoriteDish, setFavoriteDish] = useState('');
+    const [notes, setNotes] = useState('');
+
+    return (
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalView}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Details for {place?.name}</Text>
+            
+            {place?.type === 'restaurant' && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Favorite Dish</Text>
+                <TextInput
+                  style={styles.input}
+                  value={favoriteDish}
+                  onChangeText={setFavoriteDish}
+                  placeholder="What's good here?"
+                />
+              </View>
+            )}
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Best Time to Visit</Text>
+              <TextInput
+                style={styles.input}
+                value={bestTime}
+                onChangeText={setBestTime}
+                placeholder="e.g., 'Sunset' or 'Friday evenings'"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Personal Notes</Text>
+              <TextInput
+                style={[styles.input, styles.multilineInput]}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Any tips for friends?"
+                multiline
+              />
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={[styles.button, styles.cancelButton]}
+                onPress={onClose}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.button, styles.saveButton]}
+                onPress={() => onSave({
+                  ...place,
+                  bestTimeToGo: bestTime,
+                  favoriteDish: favoriteDish,
+                  personalNotes: notes
+                })}
+              >
+                <Text style={styles.buttonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   // Memoize your marker renders
   const RestaurantMarker = React.memo(({ place, onFavoritePress, isFavorite }) => (
@@ -314,7 +386,10 @@ const MapScreen = () => {
                     <Text style={styles.placeInfo}>{place.userRatingsTotal} reviews</Text>
                   </View>
                   <TouchableOpacity 
-                    onPress={() => handleFavoritePress(place)}
+                    onPress={() => {
+                      setSelectedPlace(place);
+                      setShowFavoriteModal(true);
+                    }}
                     style={styles.favoriteButton}
                   >
                     <Text style={[
@@ -339,6 +414,40 @@ const MapScreen = () => {
           </Marker>
         ))}
       </MapView>
+      <FavoriteDetailsModal
+        visible={showFavoriteModal}
+        place={selectedPlace}
+        onClose={() => {
+          setShowFavoriteModal(false);
+          setSelectedPlace(null);
+        }}
+        onSave={async (updatedPlace) => {
+          try {
+            const userId = auth.currentUser.uid;
+            const isScenic = scenicSpots.some(spot => spot.id === updatedPlace.id);
+            
+            const favoriteItem = {
+              id: updatedPlace.id,
+              name: updatedPlace.name,
+              type: isScenic ? 'scenic' : 'restaurant',
+              address: updatedPlace.vicinity || updatedPlace.address,
+              coordinate: updatedPlace.coordinate,
+              bestTimeToGo: updatedPlace.bestTimeToGo,
+              favoriteDish: updatedPlace.favoriteDish,
+              personalNotes: updatedPlace.personalNotes,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            await toggleFavorite(userId, favoriteItem);
+            setFavorites(prev => [...prev, favoriteItem]);
+            setShowFavoriteModal(false);
+            setSelectedPlace(null);
+          } catch (error) {
+            console.error('Error saving favorite:', error);
+            Alert.alert('Error', 'Failed to save favorite');
+          }
+        }}
+      />
     </View>
   );
 };
@@ -438,7 +547,64 @@ const styles = StyleSheet.create({
   },
   activeHeart: {
     color: '#FFD700',
-  }
+  },
+  modalView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  inputContainer: {
+    marginBottom: 10,
+  },
+  inputLabel: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+  },
+  multilineInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  button: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: 'white',
+  },
+  cancelButton: {
+    backgroundColor: '#ccc',
+  },
+  saveButton: {
+    backgroundColor: '#006400',
+  },
 });
 
 export default MapScreen;

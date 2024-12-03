@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Linking, Platform, Alert } from 'react-native';
 import { auth, db } from '../firebase/config';
 import { onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { themeColors, shadowStyle } from '../shared/styles';
+import { toggleFavorite, getUserData } from '../firebase/userService';
 
 const openInMaps = (place) => {
   const { latitude, longitude } = place.coordinate;
@@ -23,7 +24,22 @@ const openInMaps = (place) => {
   });
 };
 
-const FavoritesList = ({ title, data, type }) => {
+const FavoritesList = ({ title, data, type, setFavorites }) => {
+  const handleUnfavorite = async (itemId) => {
+    try {
+      const userId = auth.currentUser.uid;
+      const favoriteItem = {
+        id: itemId
+      };
+      
+      await toggleFavorite(userId, favoriteItem);
+      setFavorites(prev => prev.filter(item => item.id !== itemId));
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      Alert.alert('Error', 'Failed to remove favorite');
+    }
+  };
+
   if (data.length === 0) return null;
 
   return (
@@ -36,13 +52,61 @@ const FavoritesList = ({ title, data, type }) => {
           <View style={styles.favoriteItem}>
             <View style={styles.textContainer}>
               <Text style={styles.spotName}>{item.name}</Text>
+              
+              {item.type === 'restaurant' && item.favoriteDish && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="restaurant" size={16} color={themeColors.primary} />
+                  <Text style={styles.detailText}>Must try: {item.favoriteDish}</Text>
+                </View>
+              )}
+              
+              {item.bestTimeToGo && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="time" size={16} color={themeColors.primary} />
+                  <Text style={styles.detailText}>Best time: {item.bestTimeToGo}</Text>
+                </View>
+              )}
+              
+              {item.personalNotes && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="information-circle" size={16} color={themeColors.primary} />
+                  <Text style={styles.detailText}>Notes: {item.personalNotes}</Text>
+                </View>
+              )}
+
               <TouchableOpacity onPress={() => openInMaps(item)}>
                 <Text style={styles.addressText}>
                   📍 Directions
                 </Text>
               </TouchableOpacity>
             </View>
-            <Ionicons name="heart" size={24} color="#006400" />
+            
+            <TouchableOpacity 
+              onPress={() => {
+                Alert.alert(
+                  'Remove Favorite',
+                  'Are you sure you want to remove this from your favorites?',
+                  [
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'Remove',
+                      onPress: () => handleUnfavorite(item.id),
+                      style: 'destructive',
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons 
+                name="heart" 
+                size={24} 
+                color={themeColors.primary}
+                style={styles.heartIcon}
+              />
+            </TouchableOpacity>
           </View>
         )}
       />
@@ -109,7 +173,6 @@ const FavoritesScreen = () => {
 
   // Add this new component for friends' favorites
   const FriendsFavoritesList = ({ data }) => {
-    // Even if no data, we'll still render the section with a message
     return (
       <View style={styles.listContainer}>
         <Text style={styles.sectionTitle}>Friends' Favorite Spots</Text>
@@ -134,13 +197,35 @@ const FavoritesScreen = () => {
                 <View style={styles.textContainer}>
                   <Text style={styles.spotName}>{item.name}</Text>
                   <Text style={styles.friendName}>Added by {item.friendName}</Text>
+                  
+                  {item.type === 'restaurant' && item.favoriteDish && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="restaurant" size={16} color={themeColors.primary} />
+                      <Text style={styles.detailText}>Must try: {item.favoriteDish}</Text>
+                    </View>
+                  )}
+                  
+                  {item.bestTimeToGo && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="time" size={16} color={themeColors.primary} />
+                      <Text style={styles.detailText}>Best time: {item.bestTimeToGo}</Text>
+                    </View>
+                  )}
+                  
+                  {item.personalNotes && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="information-circle" size={16} color={themeColors.primary} />
+                      <Text style={styles.detailText}>Notes: {item.personalNotes}</Text>
+                    </View>
+                  )}
+
                   <TouchableOpacity onPress={() => openInMaps(item)}>
                     <Text style={styles.addressText}>
                       📍 Directions
                     </Text>
                   </TouchableOpacity>
                 </View>
-                <Ionicons name="heart" size={24} color="#006400" />
+                <Ionicons name="heart" size={24} color={themeColors.primary} />
               </View>
             )}
           />
@@ -158,11 +243,13 @@ const FavoritesScreen = () => {
           title="Favorite Restaurants" 
           data={restaurants}
           type="restaurant"
+          setFavorites={setFavorites}
         />
         <FavoritesList 
           title="Favorite Activities" 
           data={scenicSpots}
           type="scenic"
+          setFavorites={setFavorites}
         />
         <FriendsFavoritesList data={friendsFavorites} />
       </View>
@@ -253,6 +340,77 @@ const styles = StyleSheet.create({
     color: themeColors.primary,
     textAlign: 'center',
     opacity: 0.7,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 4,
+    gap: 6,
+  },
+  detailText: {
+    fontSize: 13,
+    color: themeColors.primary,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  modalView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    ...shadowStyle,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: themeColors.primary,
+    marginBottom: 5,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: themeColors.primary,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 14,
+  },
+  multilineInput: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  button: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  saveButton: {
+    backgroundColor: themeColors.primary,
+  },
+  cancelButton: {
+    backgroundColor: '#FF0000',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  heartIcon: {
+    padding: 8, // Makes touch target bigger
   },
 });
 
