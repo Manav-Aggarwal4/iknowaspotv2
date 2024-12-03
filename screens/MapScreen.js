@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Image, Alert, TouchableOpacity, Text, Linking, Platform } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -137,13 +137,16 @@ const MapScreen = () => {
     getUserProfile();
   }, []);
 
-  const handleFavoritePress = async (place) => {
+  const handleFavoritePress = useCallback(async (place) => {
     try {
       const userId = auth.currentUser.uid;
+      
+      const isScenic = scenicSpots.some(spot => spot.id === place.id);
+      
       const favoriteItem = {
         id: place.place_id || place.id,
         name: place.name || 'Unnamed Location',
-        type: place.types ? place.types[0] : 'place',
+        type: isScenic ? 'scenic' : 'restaurant',
         address: place.vicinity || place.formatted_address || 'No address available',
         coordinate: {
           latitude: place.geometry?.location?.lat || place.coordinate?.latitude,
@@ -163,7 +166,89 @@ const MapScreen = () => {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite');
     }
-  };
+  }, [scenicSpots]);
+
+  // Memoize your marker renders
+  const RestaurantMarker = React.memo(({ place, onFavoritePress, isFavorite }) => (
+    <Marker
+      key={place.id}
+      coordinate={place.coordinate}
+      tracksViewChanges={false}
+    >
+      <View style={styles.markerContainer}>
+        <Image
+          source={require('../assets/hot-pot.png')}
+          style={styles.markerImage}
+        />
+      </View>
+      <Callout tooltip>
+        <View style={styles.calloutContainer}>
+          <Text style={styles.placeName}>{place.name}</Text>
+          <View style={styles.infoContainer}>
+            <View style={styles.infoItem}>
+              <Text>⭐</Text>
+              <Text style={styles.placeInfo}>{place.rating}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text>💰</Text>
+              <Text style={styles.placeInfo}>{getPriceSymbols(place.priceLevel)}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text>⏳</Text>
+              <Text style={styles.placeInfo}>{place.waitTime}m</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text>{place.openNow ? '✅' : '❌'}</Text>
+              <Text style={styles.placeInfo}>{place.openNow ? 'Open' : 'Closed'}</Text>
+            </View>
+            {place.types?.filter(type => ![
+              'restaurant',
+              'food',
+              'point_of_interest',
+              'establishment'
+            ].includes(type)).length > 0 && (
+              <View style={styles.infoItem}>
+                <Text>🍽️</Text>
+                <Text style={styles.placeInfo}>{place.types
+                  ?.filter(type => ![
+                    'restaurant',
+                    'food',
+                    'point_of_interest',
+                    'establishment'
+                  ].includes(type))
+                  .map(type => type.replace(/_/g, ' '))
+                  .slice(0, 1)
+                  .join(', ')}</Text>
+              </View>
+            )}
+            <TouchableOpacity 
+              onPress={(e) => {
+                e.stopPropagation();
+                onFavoritePress(place);
+              }}
+              style={styles.favoriteButton}
+            >
+              <Text style={[
+                styles.heartIcon, 
+                isFavorite && styles.activeHeart
+              ]}>
+                {isFavorite ? '♥' : '♡'}
+              </Text>
+              <Text style={styles.favoriteText}>Favorite?</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            style={styles.addressContainer}
+            onPress={() => openInMaps(place)}
+          >
+            <Text style={[styles.placeInfo, styles.addressText]}>
+              📍 {place.address}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Callout>
+    </Marker>
+  ));
 
   return (
     <View style={styles.container}>
@@ -196,80 +281,12 @@ const MapScreen = () => {
         
         {/* Restaurant Markers */}
         {restaurants.map((place) => (
-          <Marker
+          <RestaurantMarker 
             key={place.id}
-            coordinate={place.coordinate}
-          >
-            <View style={styles.markerContainer}>
-              <Image
-                source={require('../assets/hot-pot.png')}
-                style={styles.markerImage}
-              />
-            </View>
-            <Callout tooltip>
-              <View style={styles.calloutContainer}>
-                <Text style={styles.placeName}>{place.name}</Text>
-                <View style={styles.infoContainer}>
-                  <View style={styles.infoItem}>
-                    <Text>⭐</Text>
-                    <Text style={styles.placeInfo}>{place.rating}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Text>💰</Text>
-                    <Text style={styles.placeInfo}>{getPriceSymbols(place.priceLevel)}</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Text>⏳</Text>
-                    <Text style={styles.placeInfo}>{place.waitTime}m</Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Text>{place.openNow ? '✅' : '❌'}</Text>
-                    <Text style={styles.placeInfo}>{place.openNow ? 'Open' : 'Closed'}</Text>
-                  </View>
-                  {place.types?.filter(type => ![
-                    'restaurant',
-                    'food',
-                    'point_of_interest',
-                    'establishment'
-                  ].includes(type)).length > 0 && (
-                    <View style={styles.infoItem}>
-                      <Text>🍽️</Text>
-                      <Text style={styles.placeInfo}>{place.types
-                        ?.filter(type => ![
-                          'restaurant',
-                          'food',
-                          'point_of_interest',
-                          'establishment'
-                        ].includes(type))
-                        .map(type => type.replace(/_/g, ' '))
-                        .slice(0, 1)
-                        .join(', ')}</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity 
-                    onPress={() => handleFavoritePress(place)}
-                    style={styles.favoriteButton}
-                  >
-                    <Text style={[
-                      styles.heartIcon, 
-                      isFavorite(place.id) && styles.activeHeart
-                    ]}>
-                      {isFavorite(place.id) ? '♥' : '♡'}
-                    </Text>
-                    <Text style={styles.favoriteText}>Favorite?</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity 
-                  style={styles.addressContainer}
-                  onPress={() => openInMaps(place)}
-                >
-                  <Text style={[styles.placeInfo, styles.addressText]}>
-                    📍 {place.address}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Callout>
-          </Marker>
+            place={place}
+            onFavoritePress={handleFavoritePress}
+            isFavorite={isFavorite(place.id)}
+          />
         ))}
 
         {/* Scenic Spot Markers */}

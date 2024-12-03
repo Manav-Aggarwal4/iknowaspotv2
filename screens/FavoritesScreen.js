@@ -1,8 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Linking, Platform } from 'react-native';
 import { auth, db } from '../firebase/config';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
+
+const openInMaps = (place) => {
+  const { latitude, longitude } = place.coordinate;
+  const label = encodeURIComponent(place.name);
+  const url = Platform.select({
+    ios: `maps://app?saddr=Current%20Location&daddr=${latitude},${longitude}&q=${label}`,
+    android: `google.navigation:q=${latitude},${longitude}`
+  });
+
+  Linking.canOpenURL(url).then((supported) => {
+    if (supported) {
+      Linking.openURL(url);
+    } else {
+      const browserUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+      Linking.openURL(browserUrl);
+    }
+  });
+};
+
+const FavoritesList = ({ title, data, type }) => {
+  if (data.length === 0) return null;
+
+  return (
+    <View style={styles.listContainer}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.favoriteItem}>
+            <View style={styles.textContainer}>
+              <Text style={styles.spotName}>{item.name}</Text>
+              <TouchableOpacity onPress={() => openInMaps(item)}>
+                <Text style={styles.addressText}>
+                  📍 Directions
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Ionicons name="heart" size={24} color="#006400" />
+          </View>
+        )}
+      />
+    </View>
+  );
+};
 
 const FavoritesScreen = () => {
   const [favorites, setFavorites] = useState([]);
@@ -19,6 +64,14 @@ const FavoritesScreen = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const restaurants = favorites.filter(place => 
+    place.type === 'restaurant'
+  );
+
+  const scenicSpots = favorites.filter(place => 
+    place.type === 'scenic'
+  );
 
   if (loading) {
     return (
@@ -45,20 +98,15 @@ const FavoritesScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>My Favorite Spots</Text>
-        <FlatList
-          data={favorites}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.favoriteItem}>
-              <View style={styles.textContainer}>
-                <Text style={styles.spotName}>{item.name}</Text>
-                {item.address && (
-                  <Text style={styles.addressText}>{item.address}</Text>
-                )}
-              </View>
-              <Ionicons name="heart" size={24} color="#006400" />
-            </View>
-          )}
+        <FavoritesList 
+          title="Favorite Restaurants" 
+          data={restaurants}
+          type="restaurant"
+        />
+        <FavoritesList 
+          title="Favorite Activities"
+          data={scenicSpots}
+          type="scenic"
         />
       </View>
     </SafeAreaView>
@@ -73,7 +121,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 60, // Add extra padding at the top
+    paddingTop: 60,
+  },
+  listContainer: {
+    marginBottom: 20,
   },
   title: {
     fontSize: 24,
@@ -81,6 +132,13 @@ const styles = StyleSheet.create({
     color: '#006400',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#006400',
+    marginBottom: 10,
+    marginTop: 10,
   },
   text: {
     fontSize: 20,
@@ -122,8 +180,9 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: 12,
-    color: '#666',
+    color: '#006400',
     marginTop: 2,
+    textDecorationLine: 'underline',
   }
 });
 
