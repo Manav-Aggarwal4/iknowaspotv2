@@ -4,7 +4,8 @@ import MapView, { Marker, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { GOOGLE_PLACES_API_KEY } from '@env';
 import { auth, db } from '../firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { toggleFavorite, getUserData } from '../firebase/userService';
 
 const getPriceSymbols = (level) => {
   switch(level) {
@@ -39,8 +40,12 @@ const MapScreen = () => {
   const [restaurants, setRestaurants] = useState([]);
   const [scenicSpots, setScenicSpots] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
-  const [favorites, setFavorites] = useState({});
+  const [favorites, setFavorites] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
+
+  const isFavorite = (placeId) => {
+    return favorites.some(fav => fav.id === placeId);
+  };
 
   const getUserLocation = async () => {
     try {
@@ -67,9 +72,10 @@ const MapScreen = () => {
 
   const getUserProfile = async () => {
     try {
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-      if (userDoc.exists()) {
-        setUserProfile(userDoc.data());
+      const userData = await getUserData(auth.currentUser.uid);
+      if (userData) {
+        setUserProfile(userData);
+        setFavorites(userData.favorites || []);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -131,13 +137,32 @@ const MapScreen = () => {
     getUserProfile();
   }, []);
 
-  const handleFavoritePress = (place) => {
-    setFavorites(prev => ({
-      ...prev,
-      [place.id]: !prev[place.id]
-    }));
-    
-    console.log(`${place.name} ${favorites[place.id] ? 'removed from' : 'added to'} favorites`);
+  const handleFavoritePress = async (place) => {
+    try {
+      const userId = auth.currentUser.uid;
+      const favoriteItem = {
+        id: place.place_id || place.id,
+        name: place.name || 'Unnamed Location',
+        type: place.types ? place.types[0] : 'place',
+        address: place.vicinity || place.formatted_address || 'No address available',
+        coordinate: {
+          latitude: place.geometry?.location?.lat || place.coordinate?.latitude,
+          longitude: place.geometry?.location?.lng || place.coordinate?.longitude
+        }
+      };
+      
+      console.log('Saving favorite:', favoriteItem);
+      
+      const newIsFavorite = await toggleFavorite(userId, favoriteItem);
+      if (newIsFavorite) {
+        setFavorites(prev => [...prev, favoriteItem]);
+      } else {
+        setFavorites(prev => prev.filter(item => item.id !== favoriteItem.id));
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite');
+    }
   };
 
   return (
@@ -222,10 +247,15 @@ const MapScreen = () => {
                     </View>
                   )}
                   <TouchableOpacity 
-                    style={styles.favoriteButton} 
                     onPress={() => handleFavoritePress(place)}
+                    style={styles.favoriteButton}
                   >
-                    <Text style={styles.heartIcon}>{favorites[place.id] ? '♥' : '♡'}</Text>
+                    <Text style={[
+                      styles.heartIcon, 
+                      isFavorite(place.id) && styles.activeHeart
+                    ]}>
+                      {isFavorite(place.id) ? '♥' : '♡'}
+                    </Text>
                     <Text style={styles.favoriteText}>Favorite?</Text>
                   </TouchableOpacity>
                 </View>
@@ -267,10 +297,15 @@ const MapScreen = () => {
                     <Text style={styles.placeInfo}>{place.userRatingsTotal} reviews</Text>
                   </View>
                   <TouchableOpacity 
-                    style={styles.favoriteButton} 
                     onPress={() => handleFavoritePress(place)}
+                    style={styles.favoriteButton}
                   >
-                    <Text style={styles.heartIcon}>{favorites[place.id] ? '♥' : '♡'}</Text>
+                    <Text style={[
+                      styles.heartIcon, 
+                      isFavorite(place.id) && styles.activeHeart
+                    ]}>
+                      {isFavorite(place.id) ? '♥' : '♡'}
+                    </Text>
                     <Text style={styles.favoriteText}>Favorite?</Text>
                   </TouchableOpacity>
                 </View>
@@ -343,7 +378,7 @@ const styles = StyleSheet.create({
   },
   heartIcon: {
     fontSize: 16,
-    color: '#FFD700',
+    color: 'white',
   },
   favoriteText: {
     fontSize: 13,
@@ -384,6 +419,9 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
+  activeHeart: {
+    color: '#FFD700',
+  }
 });
 
 export default MapScreen;

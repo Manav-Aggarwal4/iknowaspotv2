@@ -1,5 +1,5 @@
 import { db } from './config';
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 export const createUser = async (userId, userData) => {
   try {
@@ -29,6 +29,26 @@ export const updateUserData = async (userId, updates) => {
     await updateDoc(doc(db, 'users', userId), updates);
   } catch (error) {
     console.error('Error updating user:', error);
+    throw error;
+  }
+};
+
+export const toggleFavorite = async (userId, placeData) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userData = userDoc.data();
+    const favorites = userData?.favorites || [];
+    const isFavorite = favorites.some(fav => fav.id === placeData.id);
+
+    await updateDoc(doc(db, 'users', userId), {
+      favorites: isFavorite 
+        ? arrayRemove(placeData) 
+        : arrayUnion(placeData)
+    });
+
+    return !isFavorite;
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
     throw error;
   }
 }; 
