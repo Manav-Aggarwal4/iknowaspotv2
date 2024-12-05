@@ -32,6 +32,7 @@ const FavoritesScreen = () => {
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [notes, setNotes] = useState('');
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     loadData();
@@ -54,7 +55,7 @@ const FavoritesScreen = () => {
 
   const handleToggleFavorite = async (item) => {
     Alert.alert(
-      "Remove Favorite",
+      "Remove Favorite", // confirmation that user wants to remove it
       `Are you sure you want to remove "${item.name}" from your favorites?`,
       [
         {
@@ -83,7 +84,7 @@ const FavoritesScreen = () => {
 
   const handleNotesPress = (spot) => {
     setSelectedSpot(spot);
-    setNotes(spot.notes || '');
+    setNotes(spot.notes || ''); // modal pop up
     setIsModalVisible(true);
   };
 
@@ -102,7 +103,7 @@ const FavoritesScreen = () => {
     }
   };
 
-  const handleDirections = async (item) => {
+  const handleDirections = async (item) => { // opening apple maps upon clicking 'directions'
     try {
       const url = `maps://?q=${item.name}`;
       const supported = await Linking.canOpenURL(url);
@@ -126,13 +127,30 @@ const FavoritesScreen = () => {
     }
   };
 
+  const getFilteredFavorites = () => { // filter on top
+    if (filterType === 'all') return favorites;
+    return favorites.filter(spot => spot.type === filterType);
+  };
+
   const renderSpotCard = (item, isRecommendation = false) => (
     <View key={item.id} style={styles.card}>
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={styles.spotName} numberOfLines={1}>
-            {item.name}
-          </Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.spotName} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <View style={styles.typeBadge}>
+              <Ionicons 
+                name={item.type === 'restaurant' ? 'restaurant' : 'sunny'} 
+                size={12} 
+                color="#006400" 
+              />
+              <Text style={styles.typeText}>
+                {item.type === 'restaurant' ? 'Restaurant' : 'Scenic'}
+              </Text>
+            </View>
+          </View>
           {!isRecommendation && (
             <TouchableOpacity 
               onPress={() => handleToggleFavorite(item)}
@@ -143,45 +161,55 @@ const FavoritesScreen = () => {
           )}
         </View>
 
-        {item.favoriteDish && (
-          <View style={styles.infoRow}>
-            <Ionicons name="restaurant-outline" size={16} color="#006400" />
-            <Text style={styles.infoText}>
-              <Text style={styles.infoLabel}>Must try: </Text>
-              {item.favoriteDish}
-            </Text>
-          </View>
-        )}
+        <View style={styles.detailsContainer}>
+          {item.favoriteDish && (
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="restaurant-outline" size={16} color="#006400" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Must try</Text>
+                <Text style={styles.infoText}>{item.favoriteDish}</Text>
+              </View>
+            </View>
+          )}
 
-        {item.bestTimeToGo && (
-          <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={16} color="#006400" />
-            <Text style={styles.infoText}>
-              <Text style={styles.infoLabel}>Best time: </Text>
-              {item.bestTimeToGo}
-            </Text>
-          </View>
-        )}
+          {item.bestTimeToGo && (
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="time-outline" size={16} color="#006400" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Best time</Text>
+                <Text style={styles.infoText}>{item.bestTimeToGo}</Text>
+              </View>
+            </View>
+          )}
 
-        {item.personalNotes && (
-          <View style={styles.infoRow}>
-            <Ionicons name="person-outline" size={16} color="#006400" />
-            <Text style={styles.infoText}>
-              <Text style={styles.infoLabel}>Personal Notes: </Text>
-              {item.personalNotes}
-            </Text>
-          </View>
-        )}
+          {item.personalNotes && (
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="person-outline" size={16} color="#006400" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Personal Notes</Text>
+                <Text style={styles.infoText}>{item.personalNotes}</Text>
+              </View>
+            </View>
+          )}
 
-        {item.notes && (
-          <View style={styles.infoRow}>
-            <Ionicons name="create-outline" size={16} color="#006400" />
-            <Text style={styles.infoText}>
-              <Text style={styles.infoLabel}>Additional Notes: </Text>
-              {item.notes}
-            </Text>
-          </View>
-        )}
+          {item.notes && (
+            <View style={styles.infoRow}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="create-outline" size={16} color="#006400" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Additional Notes</Text>
+                <Text style={styles.infoText}>{item.notes}</Text>
+              </View>
+            </View>
+          )}
+        </View>
 
         <View style={styles.cardActions}>
           <TouchableOpacity 
@@ -197,10 +225,8 @@ const FavoritesScreen = () => {
               style={[styles.actionButton, styles.notesButton]}
               onPress={() => handleNotesPress(item)}
             >
-              <Ionicons name="create-outline" size={18} color="#006400" />
-              <Text style={[styles.actionButtonText, styles.notesButtonText]}>
-                Add Notes
-              </Text>
+              <Ionicons name="create-outline" size={18} color="white" />
+              <Text style={styles.actionButtonText}>Add Notes</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -244,6 +270,61 @@ const FavoritesScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {activeTab === 'favorites' && (
+        <View style={styles.filterContainer}>
+          <TouchableOpacity 
+            style={[styles.filterButton, filterType === 'all' && styles.activeFilterButton]}
+            onPress={() => setFilterType('all')}
+          >
+            <Ionicons 
+              name="apps-outline" 
+              size={16} 
+              color={filterType === 'all' ? 'white' : '#006400'} 
+            />
+            <Text style={[
+              styles.filterButtonText, 
+              filterType === 'all' && styles.activeFilterButtonText
+            ]}>
+              All
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.filterButton, filterType === 'restaurant' && styles.activeFilterButton]}
+            onPress={() => setFilterType('restaurant')}
+          >
+            <Ionicons 
+              name="restaurant-outline" 
+              size={16} 
+              color={filterType === 'restaurant' ? 'white' : '#006400'} 
+            />
+            <Text style={[
+              styles.filterButtonText, 
+              filterType === 'restaurant' && styles.activeFilterButtonText
+            ]}>
+              Restaurants
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.filterButton, filterType === 'scenic' && styles.activeFilterButton]}
+            onPress={() => setFilterType('scenic')}
+          >
+            <Ionicons 
+              name="sunny-outline" 
+              size={16} 
+              color={filterType === 'scenic' ? 'white' : '#006400'} 
+            />
+            <Text style={[
+              styles.filterButtonText, 
+              filterType === 'scenic' && styles.activeFilterButtonText
+            ]}>
+              Scenic
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
@@ -254,15 +335,16 @@ const FavoritesScreen = () => {
             <Text>Loading...</Text>
           </View>
         ) : activeTab === 'favorites' ? (
-          favorites.length === 0 ? (
+          getFilteredFavorites().length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="heart-outline" size={48} color="#006400" />
               <Text style={styles.emptyText}>
-                No favorites yet!{'\n'}Add some from the map.
+                No {filterType === 'all' ? 'favorites' : filterType + ' spots'} yet!{'\n'}
+                Add some from the map.
               </Text>
             </View>
           ) : (
-            favorites.map(item => renderSpotCard(item, false))
+            getFilteredFavorites().map(item => renderSpotCard(item, false))
           )
         ) : (
           recommendations.length === 0 ? (
@@ -325,18 +407,20 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    backgroundColor: 'white',
+    backgroundColor: '#F5F5F5',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#006400',
+    textAlign: 'center',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: 'white',
+    backgroundColor: '#F5F5F5',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
@@ -348,7 +432,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: 25,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: 'white',
     gap: 8,
   },
   activeTab: {
@@ -364,6 +448,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#F5F5F5',
   },
   contentContainer: {
     padding: CARD_PADDING,
@@ -382,70 +467,75 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 16,
-    gap: 4,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   spotName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#006400',
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 4,
   },
-  recommendBadge: {
+  typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F5E9',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    alignSelf: 'flex-start',
     gap: 4,
   },
-  recommendCount: {
+  typeText: {
+    fontSize: 12,
     color: '#006400',
-    fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  detailsContainer: {
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+    marginBottom: 16,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
-    paddingVertical: 4,
-    gap: 8,
+    gap: 12,
   },
-  infoText: {
-    color: '#444',
-    fontSize: 14,
+  iconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoContent: {
     flex: 1,
-    lineHeight: 20,
   },
   infoLabel: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#006400',
+    marginBottom: 2,
   },
-  notesContainer: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  notesText: {
-    color: '#444',
+  infoText: {
     fontSize: 14,
+    color: '#333',
     lineHeight: 20,
-    paddingLeft: 28,
-    fontStyle: 'italic',
   },
   cardActions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
   },
   actionButton: {
     flex: 1,
@@ -453,36 +543,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#006400',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
   },
   actionButtonText: {
     color: 'white',
-    fontWeight: '500',
+    fontWeight: '600',
     fontSize: 14,
   },
-  saveButton: {
-    backgroundColor: '#E8F5E9',
-    borderWidth: 1,
-    borderColor: '#006400',
-  },
-  saveButtonText: {
-    color: '#006400',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 24,
+  notesButton: {
+    backgroundColor: '#006400',
   },
   heartButton: {
     padding: 4,
@@ -532,6 +603,49 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+    backgroundColor: '#F5F5F5',
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    backgroundColor: '#F5F5F5',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#006400',
+    gap: 4,
+  },
+  activeFilterButton: {
+    backgroundColor: '#006400',
+  },
+  filterButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#006400',
+  },
+  activeFilterButtonText: {
+    color: 'white',
   },
 });
 

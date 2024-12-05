@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Button, FlatList, TouchableOpacity } from 'react-native';
 import * as Contacts from 'expo-contacts';
 
-const AddFriendsFromContacts = () => {
-  const [contacts, setContacts] = useState([]);
+
+// adding friends from contacts
+
+const AddFriendsFromContacts = () => { 
+  const [contacts, setContacts] = useState([]); // 
   const [selectedContacts, setSelectedContacts] = useState([]);
 
   useEffect(() => {

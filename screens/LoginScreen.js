@@ -28,7 +28,7 @@ const LoginScreen = ({ navigation }) => {
       setLoading(true);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Logged in user:', userCredential.user);
-      // Navigate to your map screen or main app screen
+      // Navigate to map screen 
       navigation.replace('Map');
     } catch (error) {
       console.error(error);
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    marginTop: -50, // Adjust if needed to center content better
+    marginTop: -50, 
   },
   logoContainer: {
     alignItems: 'center',
